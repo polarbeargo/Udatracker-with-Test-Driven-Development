@@ -24,6 +24,157 @@ def order_tracker(mock_storage):
     """
     return OrderTracker(mock_storage)
 
-#
-# --- TODO: add test functions below this line ---
-#
+def test_add_order_success(order_tracker, mock_storage):
+    created = order_tracker.add_order(
+        order_id="ORD001",
+        item_name="Laptop",
+        quantity=1,
+        customer_id="CUST001"
+    )
+
+    assert created["order_id"] == "ORD001"
+    assert created["item_name"] == "Laptop"
+    assert created["quantity"] == 1
+    assert created["customer_id"] == "CUST001"
+    assert created["status"] == "pending"
+
+    mock_storage.save_order.assert_called_once()
+    saved_order = mock_storage.save_order.call_args[0][1]
+    assert saved_order["order_id"] == "ORD001"
+    assert saved_order["status"] == "pending"
+
+
+def test_add_order_duplicate_id_raises(order_tracker, mock_storage):
+    mock_storage.get_order.return_value = {
+        "order_id": "ORD001",
+        "item_name": "Mouse",
+        "quantity": 1,
+        "customer_id": "CUST001",
+        "status": "pending",
+    }
+
+    with pytest.raises(ValueError, match="already exists"):
+        order_tracker.add_order("ORD001", "Laptop", 1, "CUST002")
+
+
+def test_get_order_by_id_success(order_tracker, mock_storage):
+    mock_storage.get_order.return_value = {
+        "order_id": "ORD123",
+        "item_name": "Keyboard",
+        "quantity": 2,
+        "customer_id": "C3",
+        "status": "pending",
+    }
+
+    order = order_tracker.get_order_by_id("ORD123")
+    assert order is not None
+    assert order["order_id"] == "ORD123"
+    assert order["item_name"] == "Keyboard"
+
+
+def test_get_order_by_id_not_found_returns_none(order_tracker, mock_storage):
+    mock_storage.get_order.return_value = None
+    assert order_tracker.get_order_by_id("MISSING") is None
+
+
+def test_get_order_by_id_empty_id_raises(order_tracker):
+    with pytest.raises(ValueError, match="order_id"):
+        order_tracker.get_order_by_id("")
+
+
+def test_update_order_status_success(order_tracker, mock_storage):
+    mock_storage.get_order.return_value = {
+        "order_id": "ORD200",
+        "item_name": "Monitor",
+        "quantity": 1,
+        "customer_id": "C4",
+        "status": "pending",
+    }
+
+    updated = order_tracker.update_order_status("ORD200", "shipped")
+    assert updated["status"] == "shipped"
+    mock_storage.save_order.assert_called_once()
+
+
+def test_update_order_status_nonexistent_order_raises(order_tracker, mock_storage):
+    mock_storage.get_order.return_value = None
+
+    with pytest.raises(LookupError, match="not found"):
+        order_tracker.update_order_status("ORD404", "shipped")
+
+
+def test_update_order_status_invalid_status_raises(order_tracker, mock_storage):
+    mock_storage.get_order.return_value = {
+        "order_id": "ORD300",
+        "item_name": "Desk",
+        "quantity": 1,
+        "customer_id": "C9",
+        "status": "pending",
+    }
+
+    with pytest.raises(ValueError, match="status"):
+        order_tracker.update_order_status("ORD300", "unknown")
+
+
+def test_update_order_status_empty_order_id_raises(order_tracker):
+    with pytest.raises(ValueError, match="order_id"):
+        order_tracker.update_order_status("", "shipped")
+
+
+def test_list_all_orders(order_tracker, mock_storage):
+    mock_storage.get_all_orders.return_value = {
+        "A": {
+            "order_id": "A",
+            "item_name": "Item A",
+            "quantity": 1,
+            "customer_id": "C1",
+            "status": "pending",
+        },
+        "B": {
+            "order_id": "B",
+            "item_name": "Item B",
+            "quantity": 2,
+            "customer_id": "C2",
+            "status": "shipped",
+        },
+    }
+
+    orders = order_tracker.list_all_orders()
+    assert len(orders) == 2
+    ids = {o["order_id"] for o in orders}
+    assert ids == {"A", "B"}
+
+
+def test_list_orders_by_status(order_tracker, mock_storage):
+    mock_storage.get_all_orders.return_value = {
+        "A": {
+            "order_id": "A",
+            "item_name": "Item A",
+            "quantity": 1,
+            "customer_id": "C1",
+            "status": "pending",
+        },
+        "B": {
+            "order_id": "B",
+            "item_name": "Item B",
+            "quantity": 2,
+            "customer_id": "C2",
+            "status": "shipped",
+        },
+        "C": {
+            "order_id": "C",
+            "item_name": "Item C",
+            "quantity": 3,
+            "customer_id": "C3",
+            "status": "shipped",
+        },
+    }
+
+    shipped_orders = order_tracker.list_orders_by_status("shipped")
+    assert len(shipped_orders) == 2
+    assert all(order["status"] == "shipped" for order in shipped_orders)
+
+
+def test_list_orders_by_status_invalid_status_raises(order_tracker):
+    with pytest.raises(ValueError, match="status"):
+        order_tracker.list_orders_by_status("invalid")

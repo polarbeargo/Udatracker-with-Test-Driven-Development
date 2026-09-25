@@ -3,7 +3,7 @@ from backend.order_tracker import OrderTracker
 from backend.in_memory_storage import InMemoryStorage
 
 app = Flask(__name__, static_folder='../frontend')
-in_memory_storage = InMemoryStorage()
+in_memory_storage = InMemoryStorage(max_orders=1000)
 order_tracker = OrderTracker(in_memory_storage)
 
 @app.route('/')

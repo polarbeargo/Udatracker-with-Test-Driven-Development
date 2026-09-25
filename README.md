@@ -7,6 +7,10 @@ Your goal is to use the provided test suites to drive your implementation. You'l
 
 ---
 
+## Reflection
+
+See the [Reflection](starter/README.md#reflection) section for project notes and design trade-offs.
+
 ## Part 1: Environment Setup
 
 If you are completing this project in the Udacity Workspace environment, you do not need to install anything; the dependencies should already be installed. If you are working locally, follow these steps to ensure your environment is ready.

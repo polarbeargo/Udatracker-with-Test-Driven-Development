@@ -29,6 +29,17 @@ Then check that the application is running:
 - If you are working locally, open a new tab of your web browser and go to `http://127.0.0.1:5000/`
 - In either setting, you can type control-C to stop the server. The server also may stop on its own as you edit the source code. To restart, run `python app.py` again
 
+### Docker quick start
+
+If you want to run the project locally with Docker instead of the local Flask command, use:
+
+```bash
+cd starter
+docker compose up --build
+```
+
+Then open the app in your browser at `http://localhost:5001`.
+
 You will see that there are some parts of the application that produce errors. Your task in this project is to complete the backend code and eliminate those errors. Let's get started!
 
 ---

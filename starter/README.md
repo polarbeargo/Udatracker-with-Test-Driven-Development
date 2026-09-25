@@ -29,4 +29,6 @@ This directory contains the starter code for the Udatracker project. The initial
 - I centralized business rules (required fields, positive quantity, valid status values) inside OrderTracker so API routes stay thin and consistent.
 - A key trade-off was strict status validation. It prevents accidental states early, but it requires updating one shared allowed-status list whenever new workflow states are introduced.
 - Unit tests around invalid updates caught an early bug where missing order IDs were flowing into storage lookups instead of failing fast with a validation error.
+- The in-memory store is intentionally bounded for local demo use; it keeps the app simple and testable, but a production system should replace it with a database-backed repository.
+- For production-level leak control, we would add bounded retention, persistence (DB), and memory profiling/load tests.
 - Next improvement: add persistent storage with a repository interface (SQLite/PostgreSQL), then keep the same OrderTracker tests by swapping only the storage fixture.

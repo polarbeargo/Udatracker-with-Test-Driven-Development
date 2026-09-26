@@ -240,6 +240,30 @@ def test_list_all_orders(order_tracker, mock_storage):
     assert ids == {"A", "B"}
 
 
+def test_list_all_orders_returns_empty_list_when_storage_is_empty(order_tracker, mock_storage):
+    mock_storage.get_all_orders.return_value = {}
+
+    assert order_tracker.list_all_orders() == []
+
+
+def test_list_all_orders_returns_copies_of_orders():
+    storage = InMemoryStorage(max_orders=10)
+    tracker = OrderTracker(storage)
+    tracker.add_order("ORD400", "Phone", 2, "C400")
+
+    orders = tracker.list_all_orders()
+    orders[0]["status"] = "shipped"
+    orders[0]["customer_id"] = "MUTATED"
+
+    assert storage.get_order("ORD400") == {
+        "order_id": "ORD400",
+        "item_name": "Phone",
+        "quantity": 2,
+        "customer_id": "C400",
+        "status": "pending",
+    }
+
+
 def test_list_orders_by_status(order_tracker, mock_storage):
     mock_storage.get_all_orders.return_value = {
         "A": {
@@ -268,6 +292,27 @@ def test_list_orders_by_status(order_tracker, mock_storage):
     shipped_orders = order_tracker.list_orders_by_status("shipped")
     assert len(shipped_orders) == 2
     assert all(order["status"] == "shipped" for order in shipped_orders)
+
+
+def test_list_orders_by_status_returns_empty_list_when_no_orders_match(order_tracker, mock_storage):
+    mock_storage.get_all_orders.return_value = {
+        "A": {
+            "order_id": "A",
+            "item_name": "Item A",
+            "quantity": 1,
+            "customer_id": "C1",
+            "status": "pending",
+        },
+        "B": {
+            "order_id": "B",
+            "item_name": "Item B",
+            "quantity": 2,
+            "customer_id": "C2",
+            "status": "shipped",
+        },
+    }
+
+    assert order_tracker.list_orders_by_status("delivered") == []
 
 
 def test_list_orders_by_status_invalid_status_raises(order_tracker):

@@ -61,6 +61,41 @@ def test_update_order_status_api_success(client):
     assert response.status_code == 200
     assert response.json['status'] == "shipped"
 
+
+def test_update_order_status_api_unknown_order_returns_404(client):
+    response = client.put('/api/orders/MISSING001/status', json={"new_status": "shipped"})
+
+    assert response.status_code == 404
+    assert response.json == {"error": "order not found"}
+
+
+def test_update_order_status_api_unsupported_status_returns_400(client):
+    client.post('/api/orders', json={
+        "order_id": "UPDATE002", "item_name": "Test Item", "quantity": 1, "customer_id": "C1"
+    })
+
+    response = client.put('/api/orders/UPDATE002/status', json={"new_status": "frozen"})
+
+    assert response.status_code == 400
+    assert response.json["error"].startswith("status must be one of:")
+
+
+def test_update_order_status_api_accepts_status_fallback_but_prefers_new_status(client):
+    client.post('/api/orders', json={
+        "order_id": "UPDATE003", "item_name": "Test Item", "quantity": 1, "customer_id": "C1"
+    })
+
+    fallback_response = client.put('/api/orders/UPDATE003/status', json={"status": "processing"})
+    assert fallback_response.status_code == 200
+    assert fallback_response.json["status"] == "processing"
+
+    precedence_response = client.put(
+        '/api/orders/UPDATE003/status',
+        json={"status": "delivered", "new_status": "shipped"}
+    )
+    assert precedence_response.status_code == 200
+    assert precedence_response.json["status"] == "shipped"
+
 def test_list_all_orders_api_with_data(client):
     client.post('/api/orders', json={"order_id": "LST001", "item_name": "Item A", "quantity": 1, "customer_id": "C1"})
     client.post('/api/orders', json={"order_id": "LST002", "item_name": "Item B", "quantity": 2, "customer_id": "C2"})

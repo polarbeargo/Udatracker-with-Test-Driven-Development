@@ -134,9 +134,10 @@ def test_get_order_by_id_not_found_returns_none(order_tracker, mock_storage):
     assert order_tracker.get_order_by_id("MISSING") is None
 
 
-def test_get_order_by_id_empty_id_raises(order_tracker):
+@pytest.mark.parametrize("invalid_order_id", ["", " ", None])
+def test_get_order_by_id_empty_or_non_string_id_raises(order_tracker, invalid_order_id):
     with pytest.raises(ValueError, match="order_id"):
-        order_tracker.get_order_by_id("")
+        order_tracker.get_order_by_id(invalid_order_id)
 
 
 def test_update_order_status_success(order_tracker, mock_storage):

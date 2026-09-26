@@ -15,7 +15,25 @@ def test_add_order_api_success(client):
     }
     response = client.post('/api/orders', json=order_data)
     assert response.status_code == 201
-    assert response.json['order_id'] == "API001"
+    assert response.headers['Location'].endswith('/api/orders/API001')
+    assert response.json == {
+        "order_id": "API001",
+        "item_name": "API Laptop",
+        "quantity": 1,
+        "customer_id": "APICUST001",
+        "status": "pending",
+    }
+
+
+def test_add_order_api_invalid_payload_returns_400_with_error_message(client):
+    response = client.post('/api/orders', json={
+        "order_id": "BAD001", "item_name": "Broken", "quantity": -1, "customer_id": "C1"
+    })
+
+    assert response.status_code == 400
+    assert response.json == {
+        "error": "quantity must be a positive integer"
+    }
 
 def test_get_order_api_success(client):
     client.post('/api/orders', json={

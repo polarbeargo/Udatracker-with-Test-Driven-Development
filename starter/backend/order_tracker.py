@@ -85,6 +85,4 @@ class OrderTracker:
 
     def list_orders_by_status(self, status: str):
         self._validate_status(status)
-        with self._lock:
-            all_orders = self.storage.get_all_orders().values()
-            return [order.copy() for order in all_orders if order.get("status") == status]
+        return [order for order in self.list_all_orders() if order.get("status") == status]

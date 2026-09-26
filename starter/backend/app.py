@@ -54,10 +54,11 @@ def get_order_api(order_id):
 def update_order_status_api(order_id):
     """Return 200 with the updated order, 400 for invalid input, or 404 when missing."""
     data = request.get_json(silent=True) or {}
+    new_status = data['new_status'] if 'new_status' in data else data.get('status')
     try:
         order = order_tracker.update_order_status(
             order_id=order_id,
-            new_status=data.get('new_status')
+            new_status=new_status
         )
         return jsonify(order), 200
     except ValueError as exc:

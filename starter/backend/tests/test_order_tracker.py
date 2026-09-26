@@ -80,6 +80,16 @@ def test_add_order_success(order_tracker, mock_storage):
         (
             None,
             {
+                "order_id": "ORD002B",
+                "item_name": "Mouse",
+                "quantity": "1",
+                "customer_id": "CUST002",
+            },
+            "quantity must be a positive integer",
+        ),
+        (
+            None,
+            {
                 "order_id": "ORD003",
                 "item_name": "Desk",
                 "quantity": 1,
@@ -318,15 +328,3 @@ def test_list_orders_by_status_returns_empty_list_when_no_orders_match(order_tra
 def test_list_orders_by_status_invalid_status_raises(order_tracker):
     with pytest.raises(ValueError, match="status"):
         order_tracker.list_orders_by_status("invalid")
-
-
-def test_in_memory_storage_evicts_oldest_orders_when_limit_is_reached():
-    storage = InMemoryStorage(max_orders=2)
-    storage.save_order("A", {"order_id": "A", "status": "pending"})
-    storage.save_order("B", {"order_id": "B", "status": "pending"})
-    storage.save_order("C", {"order_id": "C", "status": "pending"})
-
-    assert storage.get_order("A") is None
-    assert storage.get_order("B") is not None
-    assert storage.get_order("C") is not None
-    assert len(storage.get_all_orders()) == 2

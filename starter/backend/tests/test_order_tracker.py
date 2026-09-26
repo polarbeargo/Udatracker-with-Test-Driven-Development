@@ -26,6 +26,14 @@ def order_tracker(mock_storage):
     return OrderTracker(mock_storage)
 
 def test_add_order_success(order_tracker, mock_storage):
+    expected_order = {
+        "order_id": "ORD001",
+        "item_name": "Laptop",
+        "quantity": 1,
+        "customer_id": "CUST001",
+        "status": "pending",
+    }
+
     created = order_tracker.add_order(
         order_id="ORD001",
         item_name="Laptop",
@@ -33,29 +41,77 @@ def test_add_order_success(order_tracker, mock_storage):
         customer_id="CUST001"
     )
 
-    assert created["order_id"] == "ORD001"
-    assert created["item_name"] == "Laptop"
-    assert created["quantity"] == 1
-    assert created["customer_id"] == "CUST001"
-    assert created["status"] == "pending"
+    assert created == expected_order
 
     mock_storage.save_order.assert_called_once()
     saved_order = mock_storage.save_order.call_args[0][1]
-    assert saved_order["order_id"] == "ORD001"
-    assert saved_order["status"] == "pending"
+    assert saved_order == expected_order
 
 
-def test_add_order_duplicate_id_raises(order_tracker, mock_storage):
-    mock_storage.get_order.return_value = {
-        "order_id": "ORD001",
-        "item_name": "Mouse",
+@pytest.mark.parametrize(
+    "existing_order, order_kwargs, expected_message",
+    [
+        (
+            {
+                "order_id": "ORD001",
+                "item_name": "Mouse",
+                "quantity": 1,
+                "customer_id": "CUST001",
+                "status": "pending",
+            },
+            {
+                "order_id": "ORD001",
+                "item_name": "Laptop",
+                "quantity": 1,
+                "customer_id": "CUST002",
+            },
+            "already exists",
+        ),
+        (
+            None,
+            {
+                "order_id": "ORD002",
+                "item_name": "Mouse",
+                "quantity": 0,
+                "customer_id": "CUST002",
+            },
+            "quantity must be a positive integer",
+        ),
+        (
+            None,
+            {
+                "order_id": "ORD003",
+                "item_name": "Desk",
+                "quantity": 1,
+                "customer_id": "",
+            },
+            "customer_id must be a non-empty string",
+        ),
+    ],
+)
+def test_add_order_invalid_inputs_raise(order_tracker, mock_storage, existing_order, order_kwargs, expected_message):
+    mock_storage.get_order.return_value = existing_order
+
+    with pytest.raises(ValueError, match=expected_message):
+        order_tracker.add_order(**order_kwargs)
+
+
+def test_add_order_returns_copy_and_does_not_expose_storage_state():
+    storage = InMemoryStorage(max_orders=10)
+    tracker = OrderTracker(storage)
+
+    created = tracker.add_order("ORD010", "Laptop", 1, "CUST010")
+    created["status"] = "shipped"
+    created["customer_id"] = "MUTATED"
+
+    stored_order = storage.get_order("ORD010")
+    assert stored_order == {
+        "order_id": "ORD010",
+        "item_name": "Laptop",
         "quantity": 1,
-        "customer_id": "CUST001",
+        "customer_id": "CUST010",
         "status": "pending",
     }
-
-    with pytest.raises(ValueError, match="already exists"):
-        order_tracker.add_order("ORD001", "Laptop", 1, "CUST002")
 
 
 def test_get_order_by_id_success(order_tracker, mock_storage):

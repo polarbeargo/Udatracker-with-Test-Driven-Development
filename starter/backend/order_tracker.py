@@ -3,6 +3,14 @@
 
 from threading import RLock
 
+VALID_ORDER_STATUSES = (
+    "pending",
+    "processing",
+    "shipped",
+    "delivered",
+    "cancelled",
+)
+
 class OrderTracker:
     """
     Manages customer orders, providing functionalities to add, update,
@@ -15,7 +23,7 @@ class OrderTracker:
                 raise TypeError(f"Storage object must implement a callable '{method}' method.")
         self.storage = storage
         self._lock = RLock()
-        self._valid_statuses = {"pending", "processing", "shipped", "delivered", "cancelled"}
+        self._valid_statuses = set(VALID_ORDER_STATUSES)
 
     @staticmethod
     def _validate_non_empty_str(value, field_name: str):

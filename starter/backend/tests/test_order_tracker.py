@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import Mock
-from ..order_tracker import OrderTracker
+from ..order_tracker import OrderTracker, VALID_ORDER_STATUSES
 from ..in_memory_storage import InMemoryStorage
 
 # --- Fixtures for Unit Tests ---
@@ -141,17 +141,54 @@ def test_get_order_by_id_empty_or_non_string_id_raises(order_tracker, invalid_or
 
 
 def test_update_order_status_success(order_tracker, mock_storage):
-    mock_storage.get_order.return_value = {
+    original_order = {
         "order_id": "ORD200",
         "item_name": "Monitor",
         "quantity": 1,
         "customer_id": "C4",
         "status": "pending",
     }
+    mock_storage.get_order.return_value = original_order
 
     updated = order_tracker.update_order_status("ORD200", "shipped")
-    assert updated["status"] == "shipped"
+    assert updated == {
+        **original_order,
+        "status": "shipped",
+    }
     mock_storage.save_order.assert_called_once()
+    saved_order = mock_storage.save_order.call_args[0][1]
+    assert saved_order == {
+        **original_order,
+        "status": "shipped",
+    }
+
+
+def test_update_order_status_multiple_transitions_preserve_order_fields():
+    storage = InMemoryStorage(max_orders=10)
+    tracker = OrderTracker(storage)
+    processing_status = VALID_ORDER_STATUSES[1]
+    shipped_status = VALID_ORDER_STATUSES[2]
+
+    tracker.add_order("ORD201", "Monitor", 1, "C5")
+
+    processing_order = tracker.update_order_status("ORD201", processing_status)
+    shipped_order = tracker.update_order_status("ORD201", shipped_status)
+
+    assert processing_order == {
+        "order_id": "ORD201",
+        "item_name": "Monitor",
+        "quantity": 1,
+        "customer_id": "C5",
+        "status": processing_status,
+    }
+    assert shipped_order == {
+        "order_id": "ORD201",
+        "item_name": "Monitor",
+        "quantity": 1,
+        "customer_id": "C5",
+        "status": shipped_status,
+    }
+    assert storage.get_order("ORD201") == shipped_order
 
 
 def test_update_order_status_nonexistent_order_raises(order_tracker, mock_storage):

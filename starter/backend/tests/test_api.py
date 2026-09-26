@@ -23,7 +23,13 @@ def test_get_order_api_success(client):
     })
     response = client.get('/api/orders/GET001')
     assert response.status_code == 200
-    assert response.json['order_id'] == "GET001"
+    assert response.json == {
+        "order_id": "GET001",
+        "item_name": "Test Item",
+        "quantity": 1,
+        "customer_id": "C1",
+        "status": "pending",
+    }
 
 def test_get_order_api_not_found(client):
     response = client.get('/api/orders/NONEXISTENT')

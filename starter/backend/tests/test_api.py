@@ -103,6 +103,13 @@ def test_list_all_orders_api_with_data(client):
     assert response.status_code == 200
     assert len(response.json) == 2
 
+
+def test_list_all_orders_api_returns_empty_array_when_no_orders_exist(client):
+    response = client.get('/api/orders')
+
+    assert response.status_code == 200
+    assert response.json == []
+
 def test_list_orders_by_status_api_matching(client):
     client.post('/api/orders', json={"order_id": "S001", "item_name": "A", "quantity": 1, "customer_id": "C1", "status": "pending"})
     client.post('/api/orders', json={"order_id": "S002", "item_name": "B", "quantity": 2, "customer_id": "C2", "status": "shipped"})
@@ -110,3 +117,29 @@ def test_list_orders_by_status_api_matching(client):
     assert response.status_code == 200
     assert len(response.json) == 1
     assert response.json[0]['order_id'] == "S001"
+
+
+def test_list_orders_by_status_api_invalid_status_returns_400(client):
+    response = client.get('/api/orders?status=bogus')
+
+    assert response.status_code == 400
+    assert response.json["error"].startswith("status must be one of:")
+
+
+def test_list_orders_by_status_api_empty_status_returns_400(client):
+    response = client.get('/api/orders?status=')
+
+    assert response.status_code == 400
+    assert response.json == {"error": "status must be a non-empty string"}
+
+
+def test_list_all_orders_api_limit_bounds_response_size(client):
+    client.post('/api/orders', json={"order_id": "LIM001", "item_name": "Item A", "quantity": 1, "customer_id": "C1"})
+    client.post('/api/orders', json={"order_id": "LIM002", "item_name": "Item B", "quantity": 2, "customer_id": "C2"})
+    client.post('/api/orders', json={"order_id": "LIM003", "item_name": "Item C", "quantity": 3, "customer_id": "C3"})
+
+    response = client.get('/api/orders?limit=2')
+
+    assert response.status_code == 200
+    assert len(response.json) == 2
+    assert [order["order_id"] for order in response.json] == ["LIM001", "LIM002"]

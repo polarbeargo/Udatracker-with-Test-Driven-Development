@@ -6,6 +6,7 @@ ORDER_NOT_FOUND_ERROR = "order not found"
 INVALID_LIMIT_ERROR = "limit must be a positive integer"
 
 app = Flask(__name__, static_folder='../frontend')
+# Keep the demo process bounded even though persistence is intentionally in-memory.
 in_memory_storage = InMemoryStorage(max_orders=1000)
 order_tracker = OrderTracker(in_memory_storage)
 
@@ -28,13 +29,16 @@ def parse_limit(limit_value: str | None):
 
     return limit
 
+
 @app.route('/')
 def serve_index():
     return send_from_directory(app.static_folder, 'index.html')
 
+
 @app.route('/<path:filename>')
 def serve_static(filename):
     return send_from_directory(app.static_folder, filename)
+
 
 @app.route('/api/orders', methods=['POST'])
 def add_order_api():
@@ -54,6 +58,7 @@ def add_order_api():
     except ValueError as exc:
         return error_response(str(exc), 400)
 
+
 @app.route('/api/orders/<string:order_id>', methods=['GET'])
 def get_order_api(order_id):
     """Return 200 with an order, 400 for invalid IDs, or 404 when absent."""
@@ -65,6 +70,7 @@ def get_order_api(order_id):
     if order is None:
         return error_response(ORDER_NOT_FOUND_ERROR, 404)
     return jsonify(order), 200
+
 
 @app.route('/api/orders/<string:order_id>/status', methods=['PUT'])
 def update_order_status_api(order_id):
@@ -81,6 +87,7 @@ def update_order_status_api(order_id):
         return error_response(str(exc), 400)
     except LookupError as exc:
         return error_response(str(exc), 404)
+
 
 @app.route('/api/orders', methods=['GET'])
 def list_orders_api():
@@ -107,6 +114,7 @@ def list_orders_api():
         orders = orders[:limit]
 
     return jsonify(orders), 200
+
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", debug=True)

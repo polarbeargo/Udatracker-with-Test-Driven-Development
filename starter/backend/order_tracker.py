@@ -3,6 +3,7 @@
 
 from threading import RLock
 
+# Shared status values keep the tracker and tests aligned on one source of truth.
 VALID_ORDER_STATUSES = (
     "pending",
     "processing",
@@ -10,6 +11,7 @@ VALID_ORDER_STATUSES = (
     "delivered",
     "cancelled",
 )
+
 
 class OrderTracker:
     """
@@ -22,6 +24,7 @@ class OrderTracker:
             if not hasattr(storage, method) or not callable(getattr(storage, method)):
                 raise TypeError(f"Storage object must implement a callable '{method}' method.")
         self.storage = storage
+        # Serialize storage access so create/update/list operations stay consistent.
         self._lock = RLock()
         self._valid_statuses = set(VALID_ORDER_STATUSES)
 
@@ -40,6 +43,7 @@ class OrderTracker:
             raise ValueError(f"status must be one of: {sorted(self._valid_statuses)}")
 
     def add_order(self, order_id: str, item_name: str, quantity: int, customer_id: str, status: str = "pending"):
+        """Return a new order dict, or raise ValueError for invalid or duplicate input."""
         self._validate_non_empty_str(order_id, "order_id")
         self._validate_non_empty_str(item_name, "item_name")
         self._validate_non_empty_str(customer_id, "customer_id")
@@ -61,11 +65,13 @@ class OrderTracker:
             return order.copy()
 
     def get_order_by_id(self, order_id: str):
+        """Return a copied order dict or None, or raise ValueError for an invalid ID."""
         self._validate_non_empty_str(order_id, "order_id")
         with self._lock:
             return self.storage.get_order(order_id)
 
     def update_order_status(self, order_id: str, new_status: str):
+        """Return the updated order dict, or raise ValueError/LookupError on invalid updates."""
         self._validate_non_empty_str(order_id, "order_id")
         self._validate_status(new_status)
 
@@ -79,10 +85,12 @@ class OrderTracker:
             return order.copy()
 
     def list_all_orders(self):
+        """Return copied order dicts for all stored orders."""
         with self._lock:
             orders = self.storage.get_all_orders().values()
             return [order.copy() for order in orders]
 
     def list_orders_by_status(self, status: str):
+        """Return copied order dicts for a valid status, or raise ValueError otherwise."""
         self._validate_status(status)
         return [order for order in self.list_all_orders() if order.get("status") == status]

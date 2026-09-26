@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, url_for
 from backend.order_tracker import OrderTracker
 from backend.in_memory_storage import InMemoryStorage
 
@@ -7,6 +7,10 @@ ORDER_NOT_FOUND_ERROR = "order not found"
 app = Flask(__name__, static_folder='../frontend')
 in_memory_storage = InMemoryStorage(max_orders=1000)
 order_tracker = OrderTracker(in_memory_storage)
+
+
+def error_response(message: str, status_code: int):
+    return jsonify({'error': message}), status_code
 
 @app.route('/')
 def serve_index():
@@ -28,9 +32,11 @@ def add_order_api():
             customer_id=data.get('customer_id'),
             status=data.get('status', 'pending')
         )
-        return jsonify(order), 201
+        return jsonify(order), 201, {
+            'Location': url_for('get_order_api', order_id=order['order_id'])
+        }
     except ValueError as exc:
-        return jsonify({'error': str(exc)}), 400
+        return error_response(str(exc), 400)
 
 @app.route('/api/orders/<string:order_id>', methods=['GET'])
 def get_order_api(order_id):
@@ -38,10 +44,10 @@ def get_order_api(order_id):
     try:
         order = order_tracker.get_order_by_id(order_id)
     except ValueError as exc:
-        return jsonify({'error': str(exc)}), 400
+        return error_response(str(exc), 400)
 
     if order is None:
-        return jsonify({'error': ORDER_NOT_FOUND_ERROR}), 404
+        return error_response(ORDER_NOT_FOUND_ERROR, 404)
     return jsonify(order), 200
 
 @app.route('/api/orders/<string:order_id>/status', methods=['PUT'])
@@ -55,9 +61,9 @@ def update_order_status_api(order_id):
         )
         return jsonify(order), 200
     except ValueError as exc:
-        return jsonify({'error': str(exc)}), 400
+        return error_response(str(exc), 400)
     except LookupError as exc:
-        return jsonify({'error': str(exc)}), 404
+        return error_response(str(exc), 404)
 
 @app.route('/api/orders', methods=['GET'])
 def list_orders_api():
@@ -68,7 +74,7 @@ def list_orders_api():
             orders = order_tracker.list_orders_by_status(status)
             return jsonify(orders), 200
         except ValueError as exc:
-            return jsonify({'error': str(exc)}), 400
+            return error_response(str(exc), 400)
 
     orders = order_tracker.list_all_orders()
     return jsonify(orders), 200

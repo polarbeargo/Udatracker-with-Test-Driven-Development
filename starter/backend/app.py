@@ -3,6 +3,7 @@ from backend.order_tracker import OrderTracker
 from backend.in_memory_storage import InMemoryStorage
 
 ORDER_NOT_FOUND_ERROR = "order not found"
+INVALID_LIMIT_ERROR = "limit must be a positive integer"
 
 app = Flask(__name__, static_folder='../frontend')
 in_memory_storage = InMemoryStorage(max_orders=1000)
@@ -11,6 +12,21 @@ order_tracker = OrderTracker(in_memory_storage)
 
 def error_response(message: str, status_code: int):
     return jsonify({'error': message}), status_code
+
+
+def parse_limit(limit_value: str | None):
+    if limit_value is None:
+        return None
+
+    try:
+        limit = int(limit_value)
+    except (TypeError, ValueError):
+        raise ValueError(INVALID_LIMIT_ERROR) from None
+
+    if limit <= 0:
+        raise ValueError(INVALID_LIMIT_ERROR)
+
+    return limit
 
 @app.route('/')
 def serve_index():
@@ -70,14 +86,26 @@ def update_order_status_api(order_id):
 def list_orders_api():
     """Return 200 with all orders or filtered orders, or 400 for invalid filters."""
     status = request.args.get('status')
-    if status:
+    limit_value = request.args.get('limit')
+
+    try:
+        limit = parse_limit(limit_value)
+    except ValueError as exc:
+        return error_response(str(exc), 400)
+
+    if status is not None:
+        if not status.strip():
+            return error_response('status must be a non-empty string', 400)
         try:
             orders = order_tracker.list_orders_by_status(status)
-            return jsonify(orders), 200
         except ValueError as exc:
             return error_response(str(exc), 400)
+    else:
+        orders = order_tracker.list_all_orders()
 
-    orders = order_tracker.list_all_orders()
+    if limit is not None:
+        orders = orders[:limit]
+
     return jsonify(orders), 200
 
 if __name__ == '__main__':
